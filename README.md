@@ -29,9 +29,9 @@ An all-in-one texture manager and modding tool for **Project Rebearth**. This to
 ## Installation (For Users)
 
 1.  Go to the [Releases](https://github.com/EatherBone/project-rebearth-texturepack-manager/releases) section.
-2.  Download the latest `RebearthTextureManager_v1.0.exe`.
+2.  Download the latest `RebearthPackManager_v1.0.exe`.
 3.  Move the file to any folder on your PC.
-4.  Run `RebearthTextureManager.exe`.
+4.  Run `RebearthPackManager_v1.0.exe`.
 
 ---
 
