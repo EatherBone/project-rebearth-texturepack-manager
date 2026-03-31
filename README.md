@@ -57,11 +57,11 @@ Ensure your project folder looks like this:
 ├── main.py
 ├── config.json
 ├── assets/
-│   ├── electron.exe  <-- Clean Electron binary 
+│   ├── electron.exe ( RENAME TO - project_rebearth.exe)  <-- Clean Electron binary 
 │   └── icon.ico      <-- (Oprional) Program icon
 └── packs/            <-- (Optional) Default texture packs
 ```
-* Get Electron there: https://github.com/electron/electron/releases?q=34.5.8
+* Get Electron there: https://github.com/electron/electron/releases?q=34.5.8 and DONT FORGET TO RENAME EXE TO project_rebearth.exe
 
 ### 4. Run PyInstaller
 Use the following command to create a portable build:
