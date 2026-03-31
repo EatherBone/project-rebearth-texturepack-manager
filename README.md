@@ -67,7 +67,7 @@ Ensure your project folder looks like this:
 Use the following command to create a portable build:
 
 ```bash
-pyinstaller --noconfirm --onedir --windowed --name "RebearthTextureManager" --icon="assets/icon.ico" --add-data "assets;assets" --add-data "config.json;." main.py
+pyinstaller --noconfirm --onefile --windowed --uac-admin --name "RebearthPackManager_v1.0" --icon="assets/icon.ico" --add-data "assets;assets" --add-data "config.json;." main.py
 ```
 
 ### 5. Result
