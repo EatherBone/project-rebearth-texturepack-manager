@@ -1,16 +1,15 @@
 import os
 import shutil
 import json
-import struct
-import zipfile
 import threading
 import sys
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from PIL import Image
+import zipfile
 
 # --------------------------------------------------
-#       Project Rebearth Texture Workshop v1.0
+#       Project Rebearth Texture Workshop v1.2
 #                 by EatherBone
 #                for community <3
 # --------------------------------------------------
@@ -24,81 +23,50 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-# asar engine
-class AsarTool:
-    @staticmethod
-    def extract(asar_path, out_dir, progress_callback=None, filter_path=None):
-        unpacked_root = asar_path + ".unpacked"
-        with open(asar_path, 'rb', buffering=1024*1024) as f:
-            f.seek(12)
-            header_size = struct.unpack('<I', f.read(4))[0]
-            header_json = f.read(header_size).decode('utf-8')
-            header = json.loads(header_json[:header_json.rfind('}')+1])
-            base_offset = 16 + ((header_size + 3) & ~3)
-
-            all_files = []
-            def collect(files, rel_parts=[]):
-                for name, info in files.items():
-                    if 'files' in info: collect(info['files'], rel_parts + [name])
-                    else:
-                        rel_path = "/".join(rel_parts + [name])
-                        if filter_path is None or rel_path.startswith(filter_path):
-                            all_files.append((rel_parts + [name], info))
-            collect(header['files'])
-
-            total = len(all_files)
-            if total == 0: return
-            last_p = -1
-            for i, (parts, info) in enumerate(all_files):
-                full_path = os.path.join(out_dir, *parts)
-                os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                if info.get('unpacked'):
-                    src_unp = os.path.join(unpacked_root, *parts)
-                    if os.path.exists(src_unp): shutil.copy2(src_unp, full_path)
-                else:
-                    f.seek(base_offset + int(info['offset']))
-                    with open(full_path, 'wb', buffering=1024*1024) as out:
-                        rem = int(info['size'])
-                        while rem > 0:
-                            chunk = f.read(min(rem, 1024*1024))
-                            out.write(chunk); rem -= len(chunk)
-                
-                curr_p = int((i / total) * 100)
-                if curr_p > last_p and progress_callback:
-                    progress_callback(curr_p); last_p = curr_p
-
-# progress
+# progress popup
 class ProgressPopup(ctk.CTkToplevel):
     def __init__(self, parent, title="Processing..."):
         super().__init__(parent)
-        self.title(title); self.geometry("400x180")
-        self.attributes("-topmost", True); self.grab_set()
+        self.title(title)
+        self.geometry("400x180")
+        self.attributes("-topmost", True)
+        self.grab_set()
         self.resizable(False, False)
+        
         self.label = ctk.CTkLabel(self, text="Please wait...", font=("Arial", 14))
         self.label.pack(pady=20)
-        self.bar = ctk.CTkProgressBar(self, width=300); self.bar.set(0); self.bar.pack(pady=10)
-        self.pct = ctk.CTkLabel(self, text="0%", font=("Arial", 12, "bold")); self.pct.pack()
+        
+        self.bar = ctk.CTkProgressBar(self, width=300)
+        self.bar.set(0)
+        self.bar.pack(pady=10)
+        
+        self.pct = ctk.CTkLabel(self, text="0%", font=("Arial", 12, "bold"))
+        self.pct.pack()
 
     def update_progress(self, val):
-        self.bar.set(val / 100); self.pct.configure(text=f"{val}%"); self.update_idletasks()
+        self.bar.set(val / 100)
+        self.pct.configure(text=f"{val}%")
+        self.update_idletasks()
 
 # app
 class ModManager(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Project Rebearth Texture Workshop v1.2")
+        self.title("Rebearth Texture Manager by  v1.1 by EatherBone")
         self.geometry("1250x850")     
         self.ensure_assets_on_disk()
 
-        # get icon
+        # icon
         try:
             icon_p = os.path.join(os.getcwd(), "assets", "icon.ico")
-            self.iconbitmap(icon_p)
-        except: pass
+            if os.path.exists(icon_p):
+                self.iconbitmap(icon_p)
+        except: 
+            pass
 
         self.game_path = ""
         self.res_path = ""
-        self.app_folder = ""
+        self.app_folder = "" 
         self.selected_pack_folder = None
         self.packs_dir = os.path.join(os.getcwd(), "packs")
         os.makedirs(self.packs_dir, exist_ok=True)
@@ -111,8 +79,8 @@ class ModManager(ctk.CTk):
         local_assets = os.path.join(os.getcwd(), "assets")
         os.makedirs(local_assets, exist_ok=True)
         
-        # file list to unpack
-        files = ["project_rebearth.exe", "icon.ico"]
+        # only icon is really needed now, exe patching is removed!!!!!!!
+        files = ["icon.ico"] 
         for f in files:
             target = os.path.join(local_assets, f)
             if not os.path.exists(target):
@@ -121,15 +89,17 @@ class ModManager(ctk.CTk):
                     if os.path.exists(src):
                         shutil.copy2(src, target)
                 except Exception as e:
-                    print(f"Extraction error: {e}")
+                    print(f"Asset extraction error: {e}")
 
     def setup_ui(self):
         self.sidebar = ctk.CTkFrame(self, width=260)
         self.sidebar.pack(side="left", fill="y", padx=10, pady=10)
+        
         ctk.CTkLabel(self.sidebar, text="WORKSHOP", font=("Arial", 22, "bold")).pack(pady=20)
         
         ctk.CTkButton(self.sidebar, text="1. Select Game Folder", command=self.browse_game).pack(pady=5, padx=20)
-        self.btn_unlock = ctk.CTkButton(self.sidebar, text="2. Unlock Modding Mode", state="disabled", fg_color="green", command=self.unlock_game)
+        
+        self.btn_unlock = ctk.CTkButton(self.sidebar, text="2. Prepare Modding", state="disabled", fg_color="green", command=self.prepare_modding)
         self.btn_unlock.pack(pady=5, padx=20)
         
         ctk.CTkLabel(self.sidebar, text="Tools", font=("Arial", 13, "bold")).pack(pady=(15, 2))
@@ -139,6 +109,7 @@ class ModManager(ctk.CTk):
         
         self.label_viewing = ctk.CTkLabel(self.sidebar, text="Viewing: None", text_color="#3498db", font=("Arial", 11, "italic"))
         self.label_viewing.pack(pady=(20, 5))
+        
         self.btn_apply_pack = ctk.CTkButton(self.sidebar, text="APPLY SELECTED PACK", fg_color="#e67e22", state="disabled", command=self.apply_selected_pack)
         self.btn_apply_pack.pack(pady=5, padx=20)
 
@@ -146,6 +117,7 @@ class ModManager(ctk.CTk):
 
         self.pack_list_frame = ctk.CTkScrollableFrame(self, label_text="My Texture Packs", width=250)
         self.pack_list_frame.pack(side="left", fill="y", padx=5, pady=10)
+        
         self.editor_frame = ctk.CTkScrollableFrame(self, label_text="Pack Editor")
         self.editor_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
@@ -162,70 +134,75 @@ class ModManager(ctk.CTk):
                     if path and os.path.exists(path):
                         self.game_path = path
                         self.res_path = os.path.join(path, "resources")
-                        self.app_folder = os.path.join(self.res_path, "app")
+                        # updated path to .unpacked folder
+                        self.app_folder = os.path.join(self.res_path, "app.asar.unpacked")
                         self.update_ui_state()
-            except: pass
+            except Exception as e:
+                print(f"Config load error: {e}")
 
     def browse_game(self):
         path = filedialog.askdirectory(title="Select Game Root Folder")
         if path:
             self.game_path = path
             self.res_path = os.path.join(path, "resources")
-            self.app_folder = os.path.join(self.res_path, "app")
+            # updated path to .unpacked folder
+            self.app_folder = os.path.join(self.res_path, "app.asar.unpacked")
             self.save_config()
             self.update_ui_state()
             self.refresh_pack_list()
 
     def update_ui_state(self):
-        if not self.res_path: return
-        asar_exists = os.path.exists(os.path.join(self.res_path, "app.asar"))
-        if not asar_exists and os.path.exists(self.app_folder):
+        if not self.res_path: 
+            self.btn_unlock.configure(state="disabled", text="Select Game First", fg_color="gray")
+            return
+
+        # check if the unpacked folder exists
+        if os.path.exists(self.app_folder):
             self.btn_unlock.configure(state="disabled", text="Modding Mode: ACTIVE", fg_color="gray")
         else:
-            self.btn_unlock.configure(state="normal", text="Unlock Modding Mode", fg_color="green")
+            # check if original asar exists to suggest unpacking/preparing
+            asar_file = os.path.join(self.res_path, "app.asar")
+            if os.path.exists(asar_file):
+                self.btn_unlock.configure(state="normal", text="Prepare Modding (Unpack)", fg_color="green")
+            else:
+                self.btn_unlock.configure(state="disabled", text="Resources Not Found", fg_color="red")
 
-    def patch_exe(self):
-        p_src = os.path.join(os.getcwd(), "assets", "project_rebearth.exe")
-        p_dst = os.path.join(self.game_path, "project_rebearth.exe")
+    def prepare_modding(self):
         
-        if not os.path.exists(p_src):
-            messagebox.showerror("Error", "Source assets/project_rebearth.exe not found!")
-            return False
-
-        try:
-            # cp via cmd lol case my last attemts trying to do this stuff with python failed idk why      
-            cmd = f'cmd /c taskkill /f /im project_rebearth.exe & del /f /q "{p_dst}" & copy /y "{p_src}" "{p_dst}"'
-            os.system(cmd)
-            return True
-        except Exception as e:
-            print(f"PATCH ERROR: {e}")
-            return False
-
-    def unlock_game(self):
+        """
+        Since Sam updated the game to expose resources, we mostly just need
+        to ensure backups exist and confirm the folder structure is ready.
+        No binary extraction or EXE patching needed yaaay :>
+        """
+        
         asar_path = os.path.join(self.res_path, "app.asar")
+        unpacked_path = os.path.join(self.res_path, "app.asar.unpacked")
+        
         def task(prog):
-            # unpacking
-            AsarTool.extract(asar_path, self.app_folder, prog)
             
-            # backup
-            backups = os.path.join(self.res_path, "_backups"); os.makedirs(backups, exist_ok=True)
-            for item in os.listdir(self.res_path):
-                if item.startswith("app.asar") and item != "app" and item != "_backups":
-                    src = os.path.join(self.res_path, item)
-                    dst = os.path.join(backups, item)
-                    if os.path.exists(dst):
-                        if os.path.isdir(dst): shutil.rmtree(dst)
-                        else: os.remove(dst)
-                    shutil.move(src, dst)
+            if not os.path.exists(unpacked_path):
+                raise FileNotFoundError("app.asar.unpacked not found. Ensure you have the latest game update.")
+
+            # backups
+            backups = os.path.join(self.res_path, "_backups")
+            os.makedirs(backups, exist_ok=True)
+            backup_dest = os.path.join(backups, "app.asar.unpacked")
+            if not os.path.exists(backup_dest):
+                prog(10)
+                shutil.copytree(unpacked_path, backup_dest, dirs_exist_ok=False)
+                prog(50)
             
-            # exe patch
-            if not self.patch_exe():
-                self.after(0, lambda: messagebox.showwarning("Warning", "EXE Patch failed. Please replace it manually from /assets folder."))
+            # Also backup the .asar file itself if present
+            if os.path.exists(asar_path):
+                asar_backup = os.path.join(backups, "app.asar")
+                if not os.path.exists(asar_backup):
+                    shutil.copy2(asar_path, asar_backup)
             
+            prog(100)
             self.after(0, self.update_ui_state)
             self.after(0, self.refresh_pack_list)
         
-        self.run_thread(task, "Unlocking Game")
+        self.run_thread(task, "Preparing Modding Environment")
 
     def select_pack(self, folder_name):
         self.selected_pack_folder = os.path.join(self.packs_dir, folder_name)
@@ -234,17 +211,27 @@ class ModManager(ctk.CTk):
         self.start_async_editor_refresh()
 
     def start_async_editor_refresh(self):
-        for w in self.editor_frame.winfo_children(): w.destroy()
-        if not self.selected_pack_folder: return
+        for w in self.editor_frame.winfo_children(): 
+            w.destroy()
+        if not self.selected_pack_folder: 
+            return
+        
         img_root = os.path.join(self.selected_pack_folder, "dist", "public", "img")
+        if not os.path.exists(img_root):
+            ctk.CTkLabel(self.editor_frame, text="No 'dist/public/img' found in pack.", text_color="red").pack(pady=20)
+            return
+
         all_webp = []
         for root, _, files in os.walk(img_root):
             for f in files:
-                if f.lower().endswith(".webp"): all_webp.append(os.path.join(root, f))
+                if f.lower().endswith(".webp"): 
+                    all_webp.append(os.path.join(root, f))
+        
         self.render_chunks(all_webp, 0, self.selected_pack_folder)
 
     def render_chunks(self, file_list, index, target_pack):
-        if self.selected_pack_folder != target_pack: return
+        if self.selected_pack_folder != target_pack: 
+            return
         chunk_size = 15
         end_index = min(index + chunk_size, len(file_list))
         for i in range(index, end_index):
@@ -256,77 +243,142 @@ class ModManager(ctk.CTk):
         row = ctk.CTkFrame(self.editor_frame)
         row.pack(fill="x", pady=2, padx=5)
         try:
-            img = Image.open(full_p); img.thumbnail((45, 45))
+            img = Image.open(full_p)
+            img.thumbnail((45, 45))
             ctk_i = ctk.CTkImage(light_image=img, size=(45, 45))
             ctk.CTkLabel(row, image=ctk_i, text="").pack(side="left", padx=5)
-        except:
+        except Exception:
             ctk.CTkLabel(row, text="[Err]", width=45).pack(side="left", padx=5)
-        ctk.CTkLabel(row, text=name, anchor="w").pack(side="left", padx=10)
+        
+        ctk.CTkLabel(row, text=name, anchor="w", wraplength=300).pack(side="left", padx=10, fill="x", expand=True)
         ctk.CTkButton(row, text="Replace", width=70, command=lambda p=full_p: self.replace_img(p)).pack(side="right", padx=5)
 
     def replace_img(self, target_path):
-        src = filedialog.askopenfilename()
+        src = filedialog.askopenfilename(filetypes=[("Images", "*.png *.jpg *.jpeg *.webp")])
         if src:
-            Image.open(src).save(target_path, "WEBP")
-            self.start_async_editor_refresh()
+            try:
+                # Convert and save as WEBP to match game format
+                img = Image.open(src)
+                if img.mode in ("RGBA", "P"):
+                    img.save(target_path, "WEBP", lossless=False, quality=80)
+                else:
+                    img.convert("RGB").save(target_path, "WEBP", lossless=False, quality=80)
+                self.start_async_editor_refresh()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to replace image: {e}")
 
     def apply_selected_pack(self):
-        if not self.selected_pack_folder or not self.app_folder: return
+        if not self.selected_pack_folder or not self.app_folder: 
+            return
+        
+        if not messagebox.askyesno("Confirm", "This will overwrite game files in app.asar.unpacked.\nMake sure you have a backup.\nContinue?"):
+            return
+
         def task(prog):
+            # Copy contents of pack to the unpacked game folder
+            # Assuming the pack structure mirrors the game structure starting from root or specific subdirs
+            # Usually packs contain 'dist', 'src', etc.
+            
+            # We copy everything from the pack root into the app_folder
             shutil.copytree(self.selected_pack_folder, self.app_folder, dirs_exist_ok=True)
+            prog(100)
+        
         self.run_thread(task, f"Applying {os.path.basename(self.selected_pack_folder)}")
 
     def export_originals(self):
-        asar_path = os.path.join(self.res_path, "_backups", "app.asar")
-        if not os.path.exists(asar_path): asar_path = os.path.join(self.res_path, "app.asar")
-        if not os.path.exists(asar_path): return messagebox.showerror("Error", "Original app.asar not found!")
+        # Source is now the unpacked folder
+        source_path = os.path.join(self.res_path, "_backups", "app.asar.unpacked")
+        if not os.path.exists(source_path):
+            source_path = self.app_folder # Fallback to current if no backup
+        
+        if not os.path.exists(source_path):
+            return messagebox.showerror("Error", "Game resources folder not found!")
+            
         target = os.path.join(self.packs_dir, "Vanilla_Original")
+        
         def task(prog):
-            AsarTool.extract(asar_path, target, prog, filter_path="dist/public/img")
+            # Extract only images for convenience
+            src_img = os.path.join(source_path, "dist", "public", "img")
+            dst_img = os.path.join(target, "dist", "public", "img")
+            
+            if os.path.exists(src_img):
+                shutil.copytree(src_img, dst_img, dirs_exist_ok=True)
+            else:
+                # If structure is different, copy whole thing
+                shutil.copytree(source_path, target, dirs_exist_ok=True)
+            
+            prog(100)
             self.after(0, self.refresh_pack_list)
+        
         self.run_thread(task, "Exporting Originals")
 
     def import_zip(self):
         src = filedialog.askopenfilename(filetypes=[("ZIP Pack", "*.zip")])
-        if not src: return
+        if not src: 
+            return
         name = os.path.basename(src)[:-4]
         target = os.path.join(self.packs_dir, name)
         os.makedirs(target, exist_ok=True)
-        with zipfile.ZipFile(src, 'r') as z: z.extractall(target)
-        self.refresh_pack_list()
+        try:
+            with zipfile.ZipFile(src, 'r') as z: 
+                z.extractall(target)
+            self.refresh_pack_list()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to import ZIP: {e}")
 
     def export_to_zip(self):
-        if not self.selected_pack_folder: return
-        name = filedialog.asksaveasfilename(defaultextension=".zip", initialdir=os.getcwd())
+        if not self.selected_pack_folder: 
+            return
+        name = filedialog.asksaveasfilename(defaultextension=".zip", initialdir=os.getcwd(), initialfile=f"{os.path.basename(self.selected_pack_folder)}.zip")
         if name:
-            with zipfile.ZipFile(name, 'w') as z:
-                for r, _, fs in os.walk(self.selected_pack_folder):
-                    for f in fs:
-                        ap = os.path.join(r, f)
-                        z.write(ap, os.path.relpath(ap, self.selected_pack_folder))
-            messagebox.showinfo("Exported", "ZIP Created!")
+            try:
+                with zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED) as z:
+                    for r, _, fs in os.walk(self.selected_pack_folder):
+                        for f in fs:
+                            ap = os.path.join(r, f)
+                            arcname = os.path.relpath(ap, self.selected_pack_folder)
+                            z.write(ap, arcname)
+                messagebox.showinfo("Exported", "ZIP Created Successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
 
     def refresh_pack_list(self):
-        for w in self.pack_list_frame.winfo_children(): w.destroy()
-        ctk.CTkButton(self.pack_list_frame, text="Restore Game Originals", fg_color="gray", command=self.restore_game).pack(pady=5, fill="x", padx=5)
+        for w in self.pack_list_frame.winfo_children(): 
+            w.destroy()
+        
+        ctk.CTkButton(self.pack_list_frame, text="Restore Game Originals", fg_color="gray", hover_color="#555555", command=self.restore_game).pack(pady=5, fill="x", padx=5)
+        
         if os.path.exists(self.packs_dir):
-            for item in os.listdir(self.packs_dir):
+            for item in sorted(os.listdir(self.packs_dir)):
                 full_path = os.path.join(self.packs_dir, item)
-                if os.path.isdir(full_path):
+                if os.path.isdir(full_path) and not item.startswith("."):
                     is_sel = (full_path == self.selected_pack_folder)
                     color = "#3498db" if is_sel else "#3b3b3b"
-                    ctk.CTkButton(self.pack_list_frame, text=item, fg_color=color, command=lambda n=item: self.select_pack(n)).pack(pady=2, fill="x", padx=5)
+                    ctk.CTkButton(self.pack_list_frame, text=item, fg_color=color, hover_color="#4a4a4a", command=lambda n=item: self.select_pack(n)).pack(pady=2, fill="x", padx=5)
 
     def restore_game(self):
         backups = os.path.join(self.res_path, "_backups")
-        if os.path.exists(backups):
-            if os.path.exists(self.app_folder): shutil.rmtree(self.app_folder)
-            for item in os.listdir(backups):
-                shutil.move(os.path.join(backups, item), os.path.join(self.res_path, item))
-            shutil.rmtree(backups)
+        unpacked_backup = os.path.join(backups, "app.asar.unpacked")
+        
+        if not os.path.exists(unpacked_backup):
+            return messagebox.showwarning("Warning", "No backup found in _backups/app.asar.unpacked")
+            
+        if not messagebox.askyesno("Confirm Restore", "This will revert all texture changes to the original state.\nContinue?"):
+            return
+
+        def task(prog):
+            if os.path.exists(self.app_folder): 
+                shutil.rmtree(self.app_folder)
+            
+            shutil.copytree(unpacked_backup, self.app_folder)
+            prog(100)
+            
             self.selected_pack_folder = None
-            self.update_ui_state()
-            self.refresh_pack_list()
+            self.after(0, self.update_ui_state)
+            self.after(0, self.refresh_pack_list)
+            self.after(0, lambda: messagebox.showinfo("Success", "Game restored to original state."))
+        
+        self.run_thread(task, "Restoring Original Files")
 
     def run_thread(self, task_func, title):
         popup = ProgressPopup(self, title)
@@ -336,11 +388,17 @@ class ModManager(ctk.CTk):
                 self.after(0, lambda: [popup.destroy(), messagebox.showinfo("Done", "Operation Finished!")])
             except Exception as e:
                 self.after(0, lambda: [popup.destroy(), messagebox.showerror("Error", str(e))])
+        
         threading.Thread(target=wrapper, daemon=True).start()
 
     def launch_game(self):
         exe = os.path.join(self.game_path, "project_rebearth.exe")
-        if os.path.exists(exe): os.startfile(exe)
+        if os.path.exists(exe): 
+            os.startfile(exe)
+        else:
+            messagebox.showerror("Error", "Game executable not found at specified path.")
 
 if __name__ == "__main__":
+    ctk.set_appearance_mode("Dark")
+    ctk.set_default_color_theme("blue")
     ModManager().mainloop()
